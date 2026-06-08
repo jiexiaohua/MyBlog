@@ -5,8 +5,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   buildPostMarkdown,
   createSlug,
+  deletePost,
   getAllPosts,
+  getPostBySlug,
   parsePost,
+  updatePost,
   writePost,
 } from "./posts";
 
@@ -114,6 +117,63 @@ This is the first post about a personal blog.
     const posts = await getAllPosts(tempDir);
 
     expect(posts.map((post) => post.title)).toEqual(["Newer", "Older"]);
+  });
+
+  it("updates a post without changing its slug", async () => {
+    const created = await writePost(
+      {
+        title: "Original Title",
+        excerpt: "Original excerpt",
+        body: "Original body",
+        tags: ["Draft"],
+        featured: false,
+        date: "2026-06-08",
+      },
+      tempDir,
+    );
+
+    const updated = await updatePost(
+      created.slug,
+      {
+        title: "Updated Title",
+        excerpt: "Updated excerpt",
+        body: "Updated body",
+        tags: ["Published"],
+        featured: true,
+        date: "2026-06-09",
+      },
+      tempDir,
+    );
+
+    expect(updated.slug).toBe(created.slug);
+    expect(updated).toMatchObject({
+      title: "Updated Title",
+      excerpt: "Updated excerpt",
+      tags: ["Published"],
+      featured: true,
+      date: "2026-06-09",
+    });
+    await expect(getPostBySlug(created.slug, tempDir)).resolves.toMatchObject({
+      content: "Updated body",
+    });
+  });
+
+  it("deletes a post by slug", async () => {
+    const created = await writePost(
+      {
+        title: "Delete Me",
+        excerpt: "Temporary",
+        body: "Temporary body",
+        tags: [],
+        featured: false,
+        date: "2026-06-08",
+      },
+      tempDir,
+    );
+
+    await expect(deletePost(created.slug, tempDir)).resolves.toBe(true);
+    await expect(getPostBySlug(created.slug, tempDir)).resolves.toBeNull();
+    await expect(deletePost(created.slug, tempDir)).resolves.toBe(false);
   });
 
   it("builds front matter with escaped quoted values", () => {

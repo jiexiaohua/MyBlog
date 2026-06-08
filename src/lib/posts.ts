@@ -1,4 +1,11 @@
-import { access, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import {
+  access,
+  mkdir,
+  readFile,
+  readdir,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
 import { z } from "zod";
@@ -122,6 +129,10 @@ async function fileExists(filePath: string) {
   }
 }
 
+function isValidSlug(slug: string) {
+  return /^[a-z0-9-]+$/.test(slug);
+}
+
 async function uniqueSlug(directory: string, baseSlug: string) {
   let slug = baseSlug;
   let index = 2;
@@ -149,6 +160,47 @@ export async function writePost(input: PostInput, directory = resolvePostsDirect
   return parsePost(slug, markdown);
 }
 
+export async function updatePost(
+  slug: string,
+  input: PostInput,
+  directory = resolvePostsDirectory(),
+) {
+  if (!isValidSlug(slug)) {
+    throw new Error("Invalid slug");
+  }
+
+  const filePath = path.join(directory, `${slug}.md`);
+  if (!(await fileExists(filePath))) {
+    throw new Error("Post not found");
+  }
+
+  const parsed = postInputSchema.parse(input);
+  const date = parsed.date ?? new Date().toISOString().slice(0, 10);
+  const markdown = buildPostMarkdown({ ...parsed, date });
+
+  await writeFile(filePath, markdown, "utf8");
+
+  return parsePost(slug, markdown);
+}
+
+export async function deletePost(
+  slug: string,
+  directory = resolvePostsDirectory(),
+) {
+  if (!isValidSlug(slug)) {
+    return false;
+  }
+
+  const filePath = path.join(directory, `${slug}.md`);
+
+  if (!(await fileExists(filePath))) {
+    return false;
+  }
+
+  await rm(filePath);
+  return true;
+}
+
 export async function getAllPosts(directory = resolvePostsDirectory()) {
   await mkdir(directory, { recursive: true });
 
@@ -170,7 +222,7 @@ export async function getPostBySlug(
   slug: string,
   directory = resolvePostsDirectory(),
 ) {
-  if (!/^[a-z0-9-]+$/.test(slug)) {
+  if (!isValidSlug(slug)) {
     return null;
   }
 

@@ -5,19 +5,42 @@ import {
   isAllowedOrigin,
   verifySessionToken,
 } from "@/lib/admin-auth";
-import { writePost } from "@/lib/posts";
+import { getAllPosts, writePost } from "@/lib/posts";
 
 export const runtime = "nodejs";
+
+function isAuthorized(request: NextRequest) {
+  const sessionSecret = getSessionSecret();
+  const sessionToken = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+
+  return verifySessionToken(sessionToken, sessionSecret);
+}
+
+export async function GET(request: NextRequest) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const posts = await getAllPosts();
+  return NextResponse.json({
+    posts: posts.map((post) => ({
+      slug: post.slug,
+      title: post.title,
+      date: post.date,
+      excerpt: post.excerpt,
+      tags: post.tags,
+      featured: post.featured,
+      content: post.content,
+    })),
+  });
+}
 
 export async function POST(request: NextRequest) {
   if (!isAllowedOrigin(request)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const sessionSecret = getSessionSecret();
-  const sessionToken = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
-
-  if (!verifySessionToken(sessionToken, sessionSecret)) {
+  if (!isAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -32,6 +55,7 @@ export async function POST(request: NextRequest) {
           excerpt: post.excerpt,
           tags: post.tags,
           featured: post.featured,
+          content: post.content,
         },
         url: `/blog/${post.slug}`,
       },
