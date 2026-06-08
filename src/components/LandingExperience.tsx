@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Anchor, ArrowRight, Compass, Sparkles } from "lucide-react";
+import { ArrowRight, Compass, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 
 export function LandingExperience() {
@@ -53,13 +53,6 @@ export function LandingExperience() {
             >
               开始航行
               <ArrowRight size={19} />
-            </Link>
-            <Link
-              href="/admin"
-              className="inline-flex h-12 items-center gap-2 rounded-lg border border-white/35 bg-white/10 px-4 text-base font-bold text-white backdrop-blur transition hover:bg-white/18 focus:outline-none focus:ring-4 focus:ring-white/30"
-            >
-              <Anchor size={18} />
-              写日志
             </Link>
           </div>
         </div>

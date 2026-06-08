@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { PenLine, Sailboat } from "lucide-react";
+import { Sailboat } from "lucide-react";
 
 export function SiteHeader() {
   return (
@@ -33,13 +33,6 @@ export function SiteHeader() {
           >
             <Sailboat size={17} />
             首页
-          </Link>
-          <Link
-            href="/admin"
-            className="inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--foreground)] px-3 text-white transition hover:bg-[var(--ocean-dark)]"
-          >
-            <PenLine size={17} />
-            发文
           </Link>
         </nav>
       </div>
