@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
-import { BookOpen, Compass, Tags } from "lucide-react";
-import { PostCard } from "@/components/PostCard";
+import { BookOpen, Compass } from "lucide-react";
+import { BlogExplorer } from "@/components/BlogExplorer";
 import { SiteHeader } from "@/components/SiteHeader";
 import { getAllPosts } from "@/lib/posts";
 
@@ -67,30 +67,7 @@ export default async function BlogPage() {
         </div>
       </section>
 
-      <section className="mx-auto grid w-full max-w-6xl gap-8 px-5 py-10 md:grid-cols-[1fr_280px]">
-        <div className="grid gap-5">
-          {posts.map((post) => (
-            <PostCard key={post.slug} post={post} />
-          ))}
-        </div>
-
-        <aside className="h-fit rounded-lg border border-[var(--line)] bg-white/72 p-5">
-          <div className="mb-4 flex items-center gap-2 text-sm font-black text-[var(--foreground)]">
-            <Tags size={17} />
-            标签
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-md bg-[var(--paper)] px-2 py-1 text-xs font-bold text-[var(--ocean-dark)]"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        </aside>
-      </section>
+      <BlogExplorer posts={posts} />
     </main>
   );
 }

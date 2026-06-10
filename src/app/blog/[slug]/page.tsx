@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
@@ -6,11 +7,47 @@ import { MarkdownArticle } from "@/components/MarkdownArticle";
 import { SiteHeader } from "@/components/SiteHeader";
 import { getPostBySlug } from "@/lib/posts";
 
+type BlogPostParams = {
+  params: Promise<{ slug: string }>;
+};
+
+export async function generateMetadata({
+  params,
+}: BlogPostParams): Promise<Metadata> {
+  const { slug } = await params;
+  const post = await getPostBySlug(slug);
+
+  if (!post) {
+    return {
+      title: "文章不存在",
+      robots: {
+        index: false,
+        follow: false,
+      },
+    };
+  }
+
+  return {
+    title: post.title,
+    description: post.excerpt,
+    alternates: {
+      canonical: `/blog/${post.slug}`,
+    },
+    openGraph: {
+      title: post.title,
+      description: post.excerpt,
+      url: `/blog/${post.slug}`,
+      type: "article",
+      publishedTime: post.date,
+      tags: post.tags,
+      images: ["/luffy.png"],
+    },
+  };
+}
+
 export default async function BlogPostPage({
   params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+}: BlogPostParams) {
   await connection();
   const { slug } = await params;
   const post = await getPostBySlug(slug);

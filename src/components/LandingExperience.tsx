@@ -2,10 +2,21 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Compass, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarDays, Compass, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 
-export function LandingExperience() {
+type LandingPost = {
+  slug: string;
+  title: string;
+  date: string;
+  excerpt: string;
+};
+
+export function LandingExperience({
+  latestPosts,
+}: {
+  latestPosts: LandingPost[];
+}) {
   const [pointer, setPointer] = useState({ x: 0, y: 0 });
   const compassStyle = useMemo(
     () => ({
@@ -55,6 +66,29 @@ export function LandingExperience() {
               <ArrowRight size={19} />
             </Link>
           </div>
+
+          {latestPosts.length > 0 ? (
+            <div className="mt-8 grid max-w-2xl gap-2">
+              {latestPosts.map((post) => (
+                <Link
+                  key={post.slug}
+                  href={`/blog/${post.slug}`}
+                  className="group rounded-lg border border-white/22 bg-[#172026]/32 px-4 py-3 text-left shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:border-white/45 hover:bg-[#172026]/42"
+                >
+                  <span className="mb-1 inline-flex items-center gap-1 text-xs font-bold text-white/70">
+                    <CalendarDays size={13} />
+                    {post.date}
+                  </span>
+                  <span className="block text-base font-black text-white group-hover:text-[#ffd166]">
+                    {post.title}
+                  </span>
+                  <span className="mt-1 line-clamp-1 block text-sm font-semibold text-white/70">
+                    {post.excerpt}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <div className="relative z-10 min-h-[520px]">

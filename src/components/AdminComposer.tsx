@@ -3,19 +3,30 @@
 import {
   ChangeEvent,
   FormEvent,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import {
+  Eye,
   FilePlus2,
   ImagePlus,
   LogIn,
   LogOut,
+  PencilLine,
   Save,
+  Search,
   Send,
   ShieldCheck,
   Trash2,
 } from "lucide-react";
+import {
+  formsAreEqual,
+  normalizePostForm,
+  type AdminPostForm,
+} from "@/lib/admin-editor";
+import { filterPosts } from "@/lib/post-filters";
+import { MarkdownArticle } from "./MarkdownArticle";
 
 type AdminPost = {
   slug: string;
@@ -29,13 +40,9 @@ type AdminPost = {
 
 type EditorMode = "create" | "edit";
 
-type PostForm = {
-  title: string;
-  excerpt: string;
-  tags: string;
-  featured: boolean;
-  body: string;
-};
+type PostForm = AdminPostForm;
+
+type EditorView = "write" | "preview";
 
 const emptyForm: PostForm = {
   title: "",
@@ -56,12 +63,14 @@ function postToForm(post: AdminPost): PostForm {
 }
 
 function formToPayload(form: PostForm) {
+  const normalized = normalizePostForm(form);
+
   return {
-    title: form.title,
-    excerpt: form.excerpt,
-    body: form.body,
-    featured: form.featured,
-    tags: form.tags
+    title: normalized.title,
+    excerpt: normalized.excerpt,
+    body: normalized.body,
+    featured: normalized.featured,
+    tags: normalized.tags
       .split(",")
       .map((tag) => tag.trim())
       .filter(Boolean),
@@ -78,8 +87,19 @@ export function AdminComposer() {
   const [uploading, setUploading] = useState(false);
   const [posts, setPosts] = useState<AdminPost[]>([]);
   const [mode, setMode] = useState<EditorMode>("create");
+  const [editorView, setEditorView] = useState<EditorView>("write");
+  const [adminQuery, setAdminQuery] = useState("");
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [form, setForm] = useState<PostForm>(emptyForm);
+  const [baselineForm, setBaselineForm] = useState<PostForm>(emptyForm);
+  const filteredPosts = useMemo(
+    () => filterPosts(posts, { query: adminQuery }),
+    [adminQuery, posts],
+  );
+  const isDirty = useMemo(
+    () => !formsAreEqual(form, baselineForm),
+    [baselineForm, form],
+  );
 
   async function loadPosts() {
     const response = await fetch("/api/posts");
@@ -116,26 +136,55 @@ export function AdminComposer() {
   }
 
   async function logout() {
+    if (!confirmDiscardChanges()) {
+      return;
+    }
+
     await fetch("/api/admin/logout", { method: "POST" });
     setAuthenticated(false);
     setMode("create");
+    setEditorView("write");
+    setAdminQuery("");
     setSelectedSlug(null);
     setForm(emptyForm);
+    setBaselineForm(emptyForm);
     setPosts([]);
     setStatus("已退出");
   }
 
+  function confirmDiscardChanges() {
+    if (!isDirty) {
+      return true;
+    }
+
+    return window.confirm("当前文章有未保存修改，确定放弃这些修改吗？");
+  }
+
   function startCreate() {
+    if (!confirmDiscardChanges()) {
+      return;
+    }
+
     setMode("create");
+    setEditorView("write");
     setSelectedSlug(null);
     setForm(emptyForm);
+    setBaselineForm(emptyForm);
     setStatus("新文章");
   }
 
   function startEdit(post: AdminPost) {
+    if (!confirmDiscardChanges()) {
+      return;
+    }
+
+    const nextForm = postToForm(post);
+
     setMode("edit");
+    setEditorView("write");
     setSelectedSlug(post.slug);
-    setForm(postToForm(post));
+    setForm(nextForm);
+    setBaselineForm(nextForm);
     setStatus(`正在编辑：${post.title}`);
   }
 
@@ -175,11 +224,18 @@ export function AdminComposer() {
       setMode("edit");
       setSelectedSlug(payload.post.slug);
       setForm(postToForm(payload.post));
+      setBaselineForm(postToForm(payload.post));
+    } else {
+      setBaselineForm(postToForm(payload.post));
     }
   }
 
   async function deleteSelectedPost() {
     if (!selectedSlug) {
+      return;
+    }
+
+    if (!confirmDiscardChanges()) {
       return;
     }
 
@@ -206,7 +262,11 @@ export function AdminComposer() {
       return;
     }
 
-    startCreate();
+    setMode("create");
+    setEditorView("write");
+    setSelectedSlug(null);
+    setForm(emptyForm);
+    setBaselineForm(emptyForm);
     setStatus("已删除");
     await loadPosts();
   }
@@ -317,7 +377,7 @@ export function AdminComposer() {
               文章管理
             </div>
             <div className="text-xs font-bold text-[var(--muted)]">
-              {posts.length} 篇文章
+              {filteredPosts.length} / {posts.length} 篇文章
             </div>
           </div>
           <button
@@ -330,8 +390,21 @@ export function AdminComposer() {
           </button>
         </div>
 
+        <label className="relative mb-3 block">
+          <Search
+            size={17}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
+          />
+          <input
+            value={adminQuery}
+            onChange={(event) => setAdminQuery(event.target.value)}
+            placeholder="搜索文章"
+            className="h-10 w-full rounded-lg border border-[var(--line)] bg-[var(--paper)] pl-9 pr-3 text-sm font-bold outline-none transition focus:border-[var(--ocean)] focus:ring-4 focus:ring-[rgba(11,114,133,0.15)]"
+          />
+        </label>
+
         <div className="grid max-h-[580px] gap-2 overflow-y-auto pr-1">
-          {posts.map((post) => (
+          {filteredPosts.map((post) => (
             <button
               key={post.slug}
               type="button"
@@ -350,6 +423,11 @@ export function AdminComposer() {
               </span>
             </button>
           ))}
+          {filteredPosts.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-[var(--line)] p-4 text-sm font-bold leading-7 text-[var(--muted)]">
+              没有匹配的文章。
+            </p>
+          ) : null}
         </div>
       </aside>
 
@@ -362,6 +440,11 @@ export function AdminComposer() {
             <h1 className="text-3xl font-black text-[var(--foreground)]">
               {mode === "create" ? "写一篇新日志" : form.title || "未命名文章"}
             </h1>
+            {isDirty ? (
+              <p className="mt-1 text-sm font-bold text-[var(--coral)]">
+                有未保存修改
+              </p>
+            ) : null}
           </div>
           <button
             type="button"
@@ -473,15 +556,56 @@ export function AdminComposer() {
 
           <label className="text-sm font-black text-[var(--foreground)]">
             正文
-            <textarea
-              ref={textareaRef}
-              value={form.body}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, body: event.target.value }))
-              }
-              className="mt-2 min-h-[460px] w-full resize-y rounded-lg border border-[var(--line)] p-3 font-mono text-sm leading-7 outline-none transition focus:border-[var(--ocean)] focus:ring-4 focus:ring-[rgba(11,114,133,0.15)]"
-              required
-            />
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setEditorView("write")}
+                className={`inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-black ${
+                  editorView === "write"
+                    ? "bg-[var(--foreground)] text-white"
+                    : "border border-[var(--line)] bg-[var(--paper)] text-[var(--foreground)]"
+                }`}
+              >
+                <PencilLine size={16} />
+                编辑
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditorView("preview")}
+                className={`inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-black ${
+                  editorView === "preview"
+                    ? "bg-[var(--foreground)] text-white"
+                    : "border border-[var(--line)] bg-[var(--paper)] text-[var(--foreground)]"
+                }`}
+              >
+                <Eye size={16} />
+                预览
+              </button>
+            </div>
+            {editorView === "write" ? (
+              <textarea
+                ref={textareaRef}
+                value={form.body}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    body: event.target.value,
+                  }))
+                }
+                className="mt-3 min-h-[460px] w-full resize-y rounded-lg border border-[var(--line)] p-3 font-mono text-sm leading-7 outline-none transition focus:border-[var(--ocean)] focus:ring-4 focus:ring-[rgba(11,114,133,0.15)]"
+                required
+              />
+            ) : (
+              <div className="mt-3 min-h-[460px] overflow-auto rounded-lg border border-[var(--line)] bg-[var(--paper)] p-5">
+                {form.body.trim() ? (
+                  <MarkdownArticle content={form.body} />
+                ) : (
+                  <p className="text-sm font-bold text-[var(--muted)]">
+                    正文为空，暂无预览。
+                  </p>
+                )}
+              </div>
+            )}
           </label>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
