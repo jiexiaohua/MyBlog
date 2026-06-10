@@ -66,6 +66,14 @@ pnpm build
 
 生产构建使用 Next.js `output: "standalone"`，推荐在服务器上由 PM2 运行 standalone `server.js`，Nginx 监听 80 端口并代理到 `127.0.0.1:3000`。
 
+使用 standalone 运行时，除了 `.next/standalone`，还必须让运行目录能访问构建出的静态资源和 `public` 目录，否则页面 HTML 会返回 200，但 CSS、JS、图片优化资源会 404，浏览器会显示成未样式化的裸页面。当前服务器通过以下链接保证资源可读：
+
+```bash
+ln -sfn /www/wwwroot/myblog/current/.next/static /www/wwwroot/myblog/current/.next/standalone/.next/static
+ln -sfn /www/wwwroot/myblog/current/public /www/wwwroot/myblog/current/.next/standalone/public
+pm2 restart myblog --update-env
+```
+
 ## 图片来源
 
 路飞头像来自 PNG Mart：`https://www.pngmart.com/image/10185`，页面标注为个人使用图片。
