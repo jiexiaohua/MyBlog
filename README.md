@@ -22,14 +22,15 @@ pnpm dev
 
 ## 内容目录
 
-默认文章目录是 `content/posts`，默认上传目录是 `public/uploads`。生产环境可以设置：
+默认文章目录是 `content/posts`，默认图片目录是 `public/uploads`，默认附件目录是 `content/attachments`。生产环境可以设置：
 
 ```bash
 BLOG_CONTENT_DIR=/var/www/myblog/content/posts
 BLOG_UPLOADS_DIR=/var/www/myblog/public/uploads
+BLOG_ATTACHMENTS_DIR=/var/www/myblog/public/attachments
 ```
 
-这样后续重新部署应用代码时，不会覆盖服务器上后台发布的新文章和图片。
+这样后续重新部署应用代码时，不会覆盖服务器上后台发布的新文章、图片和附件。
 
 ## 站点域名
 

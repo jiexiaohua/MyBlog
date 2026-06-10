@@ -9,6 +9,16 @@ describe("admin editor helpers", () => {
         excerpt: "  A summary  ",
         categories: "技术,  生活,,",
         tags: "Next.js,  Life,,",
+        attachments: [
+          {
+            name: "Spec.pdf",
+            filename: "spec-1.pdf",
+            url: "/attachments/spec-1.pdf",
+            size: 100,
+            type: "application/pdf",
+            uploadedAt: "2026-06-10T10:00:00.000Z",
+          },
+        ],
         featured: true,
         body: " Body ",
       }),
@@ -17,6 +27,16 @@ describe("admin editor helpers", () => {
         excerpt: "A summary",
         categories: "技术, 生活",
         tags: "Next.js, Life",
+        attachments: [
+          {
+            name: "Spec.pdf",
+            filename: "spec-1.pdf",
+            url: "/attachments/spec-1.pdf",
+            size: 100,
+            type: "application/pdf",
+            uploadedAt: "2026-06-10T10:00:00.000Z",
+          },
+        ],
         featured: true,
         body: "Body",
     });
@@ -28,6 +48,7 @@ describe("admin editor helpers", () => {
       excerpt: "A summary",
       categories: "技术, 生活",
       tags: "Next.js, Life",
+      attachments: [],
       featured: false,
       body: "# Body",
     };
@@ -38,6 +59,21 @@ describe("admin editor helpers", () => {
         tags: " Next.js,Life ",
       }),
     ).toBe(true);
+    expect(
+      formsAreEqual(saved, {
+        ...saved,
+        attachments: [
+          {
+            name: "Spec.pdf",
+            filename: "spec-1.pdf",
+            url: "/attachments/spec-1.pdf",
+            size: 100,
+            type: "application/pdf",
+            uploadedAt: "2026-06-10T10:00:00.000Z",
+          },
+        ],
+      }),
+    ).toBe(false);
     expect(formsAreEqual(saved, { ...saved, body: "# Changed" })).toBe(false);
   });
 });

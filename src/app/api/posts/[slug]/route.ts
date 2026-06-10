@@ -58,6 +58,7 @@ export async function PATCH(
         excerpt: post.excerpt,
         tags: post.tags,
         categories: post.categories,
+        attachments: post.attachments,
         featured: post.featured,
         content: post.content,
       },

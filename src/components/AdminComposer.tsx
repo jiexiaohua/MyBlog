@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import {
+  Download,
   Eye,
   FilePlus2,
   FolderOpen,
@@ -15,11 +16,13 @@ import {
   LogIn,
   LogOut,
   PencilLine,
+  Paperclip,
   Save,
   Search,
   Send,
   ShieldCheck,
   Trash2,
+  X,
 } from "lucide-react";
 import {
   formsAreEqual,
@@ -40,8 +43,18 @@ type AdminPost = {
   excerpt: string;
   categories: string[];
   tags: string[];
+  attachments: Attachment[];
   featured: boolean;
   content: string;
+};
+
+type Attachment = {
+  name: string;
+  filename: string;
+  url: string;
+  size: number;
+  type: string;
+  uploadedAt: string;
 };
 
 type EditorMode = "create" | "edit";
@@ -55,6 +68,7 @@ const emptyForm: PostForm = {
   excerpt: "",
   categories: "随笔",
   tags: "",
+  attachments: [],
   featured: false,
   body: "# 新文章\n\n从这里开始写。",
 };
@@ -65,6 +79,7 @@ function postToForm(post: AdminPost): PostForm {
     excerpt: post.excerpt,
     categories: post.categories.join(", "),
     tags: post.tags.join(", "),
+    attachments: post.attachments ?? [],
     featured: post.featured,
     body: post.content,
   };
@@ -82,6 +97,7 @@ function formToPayload(form: PostForm) {
       .split(",")
       .map((category) => category.trim())
       .filter(Boolean),
+    attachments: normalized.attachments,
     tags: normalized.tags
       .split(",")
       .map((tag) => tag.trim())
@@ -92,11 +108,13 @@ function formToPayload(form: PostForm) {
 export function AdminComposer() {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [posts, setPosts] = useState<AdminPost[]>([]);
   const [mode, setMode] = useState<EditorMode>("create");
   const [editorView, setEditorView] = useState<EditorView>("write");
@@ -354,6 +372,57 @@ export function AdminComposer() {
     setStatus("图片已插入正文");
   }
 
+  async function uploadAttachment(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    if (file.size > 20 * 1024 * 1024) {
+      setStatus("附件不能超过 20MB");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("attachment", file);
+    setUploadingAttachment(true);
+    setStatus("正在上传附件");
+
+    const response = await fetch("/api/admin/attachments", {
+      method: "POST",
+      body: formData,
+    });
+
+    setUploadingAttachment(false);
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+      setStatus(payload?.error ?? "附件上传失败");
+      return;
+    }
+
+    const payload = (await response.json()) as { attachment: Attachment };
+    setForm((current) => ({
+      ...current,
+      attachments: [...current.attachments, payload.attachment],
+    }));
+    setStatus("附件已添加，保存文章后生效");
+  }
+
+  function removeAttachment(filename: string) {
+    setForm((current) => ({
+      ...current,
+      attachments: current.attachments.filter(
+        (attachment) => attachment.filename !== filename,
+      ),
+    }));
+    setStatus("附件已从文章移除，保存后会清理文件");
+  }
+
   if (!authenticated) {
     return (
       <form
@@ -599,6 +668,12 @@ export function AdminComposer() {
                 onChange={uploadImage}
                 className="hidden"
               />
+              <input
+                ref={attachmentInputRef}
+                type="file"
+                onChange={uploadAttachment}
+                className="hidden"
+              />
               <button
                 type="button"
                 disabled={uploading}
@@ -607,6 +682,15 @@ export function AdminComposer() {
               >
                 <ImagePlus size={17} />
                 {uploading ? "上传中" : "上传图片"}
+              </button>
+              <button
+                type="button"
+                disabled={uploadingAttachment}
+                onClick={() => attachmentInputRef.current?.click()}
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--paper)] px-3 text-sm font-black text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Paperclip size={17} />
+                {uploadingAttachment ? "上传中" : "上传附件"}
               </button>
               {mode === "edit" ? (
                 <button
@@ -620,6 +704,59 @@ export function AdminComposer() {
                 </button>
               ) : null}
             </div>
+          </div>
+
+          <div className="rounded-lg border border-[var(--line)] bg-[var(--paper)] p-3">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="inline-flex items-center gap-2 text-sm font-black text-[var(--foreground)]">
+                <Paperclip size={17} />
+                附件
+              </div>
+              <span className="text-xs font-bold text-[var(--muted)]">
+                单个 20MB 内
+              </span>
+            </div>
+            {form.attachments.length > 0 ? (
+              <div className="grid gap-2">
+                {form.attachments.map((attachment) => (
+                  <div
+                    key={attachment.filename}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--line)] bg-white px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-black text-[var(--foreground)]">
+                        {attachment.name}
+                      </div>
+                      <div className="text-xs font-bold text-[var(--muted)]">
+                        {(attachment.size / 1024 / 1024).toFixed(2)} MB
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={attachment.url}
+                        download={attachment.name}
+                        className="inline-flex h-9 items-center gap-1 rounded-lg border border-[var(--line)] bg-[var(--paper)] px-2 text-xs font-black text-[var(--ocean-dark)]"
+                      >
+                        <Download size={14} />
+                        下载
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => removeAttachment(attachment.filename)}
+                        className="inline-flex h-9 items-center gap-1 rounded-lg border border-[rgba(228,87,69,0.35)] bg-white px-2 text-xs font-black text-[var(--coral)]"
+                      >
+                        <X size={14} />
+                        移除
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm font-bold text-[var(--muted)]">
+                还没有附件。
+              </p>
+            )}
           </div>
 
           <label className="text-sm font-black text-[var(--foreground)]">

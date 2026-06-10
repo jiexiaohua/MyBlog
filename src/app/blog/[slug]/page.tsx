@@ -2,7 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { ArrowLeft, ArrowRight, CalendarDays, FolderOpen } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CalendarDays,
+  Download,
+  FolderOpen,
+  Paperclip,
+} from "lucide-react";
 import { MarkdownArticle } from "@/components/MarkdownArticle";
 import { SiteHeader } from "@/components/SiteHeader";
 import { getAllPosts, getPostBySlug } from "@/lib/posts";
@@ -115,6 +122,38 @@ export default async function BlogPostPage({
         </header>
 
         <MarkdownArticle content={post.content} />
+
+        {post.attachments.length > 0 ? (
+          <section className="mt-10 rounded-lg border border-[var(--line)] bg-white p-5 shadow-sm">
+            <div className="mb-4 inline-flex items-center gap-2 text-lg font-black text-[var(--foreground)]">
+              <Paperclip size={20} />
+              附件下载
+            </div>
+            <div className="grid gap-3">
+              {post.attachments.map((attachment) => (
+                <a
+                  key={attachment.filename}
+                  href={attachment.url}
+                  download={attachment.name}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--line)] bg-[var(--paper)] px-4 py-3 transition hover:bg-white"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-black text-[var(--foreground)]">
+                      {attachment.name}
+                    </span>
+                    <span className="mt-1 block text-xs font-bold text-[var(--muted)]">
+                      {(attachment.size / 1024 / 1024).toFixed(2)} MB
+                    </span>
+                  </span>
+                  <span className="inline-flex h-9 items-center gap-2 rounded-lg bg-[var(--foreground)] px-3 text-xs font-black text-white">
+                    <Download size={15} />
+                    下载
+                  </span>
+                </a>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {(newerPost || olderPost) ? (
           <nav className="mt-12 grid gap-3 border-t border-[var(--line)] pt-6 sm:grid-cols-2">

@@ -9,6 +9,11 @@ import {
 import path from "node:path";
 import matter from "gray-matter";
 import { z } from "zod";
+import {
+  removeAttachmentFiles,
+  resolveAttachmentsDirectory,
+  type Attachment,
+} from "./attachments";
 
 export const DEFAULT_CATEGORY = "随笔";
 
@@ -22,12 +27,30 @@ const categoriesSchema = z
     categories.length > 0 ? categories : [DEFAULT_CATEGORY],
   );
 
+const attachmentSchema = z.object({
+  name: z.string().trim().min(1).max(180),
+  filename: z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{0,180}$/),
+  url: z.string().trim().regex(/^\/attachments\/[a-z0-9][a-z0-9._-]{0,180}$/),
+  size: z.number().int().nonnegative(),
+  type: z.string().trim().min(1).max(120),
+  uploadedAt: z.union([z.string(), z.date()]).transform((value) => {
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+
+    return value.trim();
+  }),
+});
+
+const attachmentsSchema = z.array(attachmentSchema).default([]);
+
 const postInputSchema = z.object({
   title: z.string().trim().min(1).max(120),
   excerpt: z.string().trim().min(1).max(240),
   body: z.string().trim().min(1),
   tags: z.array(listItemSchema).max(8).default([]),
   categories: categoriesSchema,
+  attachments: attachmentsSchema,
   featured: z.boolean().default(false),
   date: z.string().trim().min(10).max(32).optional(),
 });
@@ -43,6 +66,7 @@ const frontMatterSchema = z.object({
   excerpt: z.string().trim().optional(),
   tags: z.array(z.string()).default([]),
   categories: categoriesSchema,
+  attachments: attachmentsSchema,
   featured: z.boolean().default(false),
 });
 
@@ -55,6 +79,7 @@ export type Post = {
   excerpt: string;
   tags: string[];
   categories: string[];
+  attachments: Attachment[];
   featured: boolean;
   readingTime: string;
   content: string;
@@ -113,13 +138,27 @@ function formatYamlList(values: string[]) {
     : " []";
 }
 
+function formatYamlAttachments(attachments: Attachment[]) {
+  if (attachments.length === 0) {
+    return " []";
+  }
+
+  return `\n${attachments
+    .map(
+      (attachment) =>
+        `  - name: "${escapeYamlString(attachment.name)}"\n    filename: "${escapeYamlString(attachment.filename)}"\n    url: "${escapeYamlString(attachment.url)}"\n    size: ${attachment.size}\n    type: "${escapeYamlString(attachment.type)}"\n    uploadedAt: "${escapeYamlString(attachment.uploadedAt)}"`,
+    )
+    .join("\n")}`;
+}
+
 export function buildPostMarkdown(input: PostInput) {
   const parsed = postInputSchema.parse(input);
   const date = parsed.date ?? new Date().toISOString().slice(0, 10);
   const categories = formatYamlList(parsed.categories);
   const tags = formatYamlList(parsed.tags);
+  const attachments = formatYamlAttachments(parsed.attachments);
 
-  return `---\ntitle: "${escapeYamlString(parsed.title)}"\ndate: "${date}"\nexcerpt: "${escapeYamlString(parsed.excerpt)}"\ncategories:${categories}\ntags:${tags}\nfeatured: ${parsed.featured}\n---\n\n${parsed.body}\n`;
+  return `---\ntitle: "${escapeYamlString(parsed.title)}"\ndate: "${date}"\nexcerpt: "${escapeYamlString(parsed.excerpt)}"\ncategories:${categories}\ntags:${tags}\nattachments:${attachments}\nfeatured: ${parsed.featured}\n---\n\n${parsed.body}\n`;
 }
 
 export function parsePost(slug: string, fileContents: string): Post {
@@ -134,6 +173,7 @@ export function parsePost(slug: string, fileContents: string): Post {
     excerpt: frontMatter.excerpt || deriveExcerpt(content),
     tags: frontMatter.tags,
     categories: frontMatter.categories,
+    attachments: frontMatter.attachments,
     featured: frontMatter.featured,
     readingTime: estimateReadingTime(content),
     content,
@@ -184,6 +224,7 @@ export async function updatePost(
   slug: string,
   input: PostInput,
   directory = resolvePostsDirectory(),
+  attachmentsDirectory = resolveAttachmentsDirectory(),
 ) {
   if (!isValidSlug(slug)) {
     throw new Error("Invalid slug");
@@ -194,11 +235,19 @@ export async function updatePost(
     throw new Error("Post not found");
   }
 
+  const existing = parsePost(slug, await readFile(filePath, "utf8"));
   const parsed = postInputSchema.parse(input);
   const date = parsed.date ?? new Date().toISOString().slice(0, 10);
   const markdown = buildPostMarkdown({ ...parsed, date });
 
   await writeFile(filePath, markdown, "utf8");
+  await removeAttachmentFiles(
+    existing.attachments.filter(
+      (attachment) =>
+        !parsed.attachments.some((current) => current.filename === attachment.filename),
+    ),
+    attachmentsDirectory,
+  );
 
   return parsePost(slug, markdown);
 }
@@ -206,6 +255,7 @@ export async function updatePost(
 export async function deletePost(
   slug: string,
   directory = resolvePostsDirectory(),
+  attachmentsDirectory = resolveAttachmentsDirectory(),
 ) {
   if (!isValidSlug(slug)) {
     return false;
@@ -217,7 +267,9 @@ export async function deletePost(
     return false;
   }
 
+  const post = parsePost(slug, await readFile(filePath, "utf8"));
   await rm(filePath);
+  await removeAttachmentFiles(post.attachments, attachmentsDirectory);
   return true;
 }
 

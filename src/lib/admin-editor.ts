@@ -1,8 +1,11 @@
+import type { Attachment } from "./attachments";
+
 export type AdminPostForm = {
   title: string;
   excerpt: string;
   categories: string;
   tags: string;
+  attachments: Attachment[];
   featured: boolean;
   body: string;
 };
@@ -21,6 +24,7 @@ export function normalizePostForm(form: AdminPostForm): AdminPostForm {
     excerpt: form.excerpt.trim(),
     categories: normalizeTags(form.categories),
     tags: normalizeTags(form.tags),
+    attachments: form.attachments,
     featured: form.featured,
     body: form.body.trim(),
   };
