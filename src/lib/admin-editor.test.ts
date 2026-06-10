@@ -7,16 +7,18 @@ describe("admin editor helpers", () => {
       normalizePostForm({
         title: "  A title  ",
         excerpt: "  A summary  ",
+        categories: "技术,  生活,,",
         tags: "Next.js,  Life,,",
         featured: true,
         body: " Body ",
       }),
     ).toEqual({
-      title: "A title",
-      excerpt: "A summary",
-      tags: "Next.js, Life",
-      featured: true,
-      body: "Body",
+        title: "A title",
+        excerpt: "A summary",
+        categories: "技术, 生活",
+        tags: "Next.js, Life",
+        featured: true,
+        body: "Body",
     });
   });
 
@@ -24,6 +26,7 @@ describe("admin editor helpers", () => {
     const saved = {
       title: "A title",
       excerpt: "A summary",
+      categories: "技术, 生活",
       tags: "Next.js, Life",
       featured: false,
       body: "# Body",

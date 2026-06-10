@@ -1,8 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Sailboat } from "lucide-react";
+import { getSiteHost } from "@/lib/site-config";
 
 export function SiteHeader() {
+  const siteHost = getSiteHost();
+
   return (
     <header className="border-b border-[var(--line)] bg-[var(--paper)]/88 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-4">
@@ -21,7 +24,7 @@ export function SiteHeader() {
               小花的航海日志
             </span>
             <span className="block text-xs font-semibold text-[var(--muted)]">
-              xiaohua.host
+              {siteHost}
             </span>
           </span>
         </Link>

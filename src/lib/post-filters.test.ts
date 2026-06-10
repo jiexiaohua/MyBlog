@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { filterPosts, getAvailableTags } from "./post-filters";
+import {
+  filterPosts,
+  getAvailableCategories,
+  getAvailableTags,
+} from "./post-filters";
 
 const posts = [
   {
@@ -7,18 +11,21 @@ const posts = [
     title: "Next.js Notes",
     excerpt: "Static rendering and metadata",
     tags: ["Next.js", "SEO"],
+    categories: ["技术"],
   },
   {
     slug: "daily-log",
     title: "Daily Log",
     excerpt: "Life by the sea",
     tags: ["Life"],
+    categories: ["生活", "随笔"],
   },
   {
     slug: "image-workflow",
     title: "Image Workflow",
     excerpt: "Upload png and convert it to webp",
     tags: ["Next.js", "Images"],
+    categories: ["技术", "工具"],
   },
 ];
 
@@ -31,6 +38,8 @@ describe("post filters", () => {
     expect(filterPosts(posts, { query: "life" }).map((post) => post.slug))
       .toEqual(["daily-log"]);
     expect(filterPosts(posts, { query: "image-workflow" }).map((post) => post.slug))
+      .toEqual(["image-workflow"]);
+    expect(filterPosts(posts, { query: "工具" }).map((post) => post.slug))
       .toEqual(["image-workflow"]);
   });
 
@@ -53,6 +62,30 @@ describe("post filters", () => {
       { name: "Images", count: 1 },
       { name: "Life", count: 1 },
       { name: "SEO", count: 1 },
+    ]);
+  });
+
+  it("filters posts by one or more active categories with OR matching", () => {
+    expect(
+      filterPosts(posts, { activeCategories: ["生活"] }).map((post) => post.slug),
+    ).toEqual(["daily-log"]);
+    expect(
+      filterPosts(posts, { activeCategories: ["生活", "工具"] }).map(
+        (post) => post.slug,
+      ),
+    ).toEqual(["daily-log", "image-workflow"]);
+    expect(
+      filterPosts(posts, { query: "webp", activeCategories: ["生活", "工具"] })
+        .map((post) => post.slug),
+    ).toEqual(["image-workflow"]);
+  });
+
+  it("returns available categories sorted by usage then name", () => {
+    expect(getAvailableCategories(posts)).toEqual([
+      { name: "技术", count: 2 },
+      { name: "工具", count: 1 },
+      { name: "生活", count: 1 },
+      { name: "随笔", count: 1 },
     ]);
   });
 });

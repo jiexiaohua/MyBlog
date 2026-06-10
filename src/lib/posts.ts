@@ -10,11 +10,24 @@ import path from "node:path";
 import matter from "gray-matter";
 import { z } from "zod";
 
+export const DEFAULT_CATEGORY = "随笔";
+
+const listItemSchema = z.string().trim().min(1).max(32);
+
+const categoriesSchema = z
+  .array(listItemSchema)
+  .max(8)
+  .default([DEFAULT_CATEGORY])
+  .transform((categories) =>
+    categories.length > 0 ? categories : [DEFAULT_CATEGORY],
+  );
+
 const postInputSchema = z.object({
   title: z.string().trim().min(1).max(120),
   excerpt: z.string().trim().min(1).max(240),
   body: z.string().trim().min(1),
-  tags: z.array(z.string().trim().min(1).max(32)).max(8).default([]),
+  tags: z.array(listItemSchema).max(8).default([]),
+  categories: categoriesSchema,
   featured: z.boolean().default(false),
   date: z.string().trim().min(10).max(32).optional(),
 });
@@ -29,6 +42,7 @@ const frontMatterSchema = z.object({
   }),
   excerpt: z.string().trim().optional(),
   tags: z.array(z.string()).default([]),
+  categories: categoriesSchema,
   featured: z.boolean().default(false),
 });
 
@@ -40,6 +54,7 @@ export type Post = {
   date: string;
   excerpt: string;
   tags: string[];
+  categories: string[];
   featured: boolean;
   readingTime: string;
   content: string;
@@ -90,17 +105,21 @@ function escapeYamlString(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
+function formatYamlList(values: string[]) {
+  return values.length > 0
+    ? `\n${values
+        .map((value) => `  - "${escapeYamlString(value)}"`)
+        .join("\n")}`
+    : " []";
+}
+
 export function buildPostMarkdown(input: PostInput) {
   const parsed = postInputSchema.parse(input);
   const date = parsed.date ?? new Date().toISOString().slice(0, 10);
-  const tags =
-    parsed.tags.length > 0
-      ? `\n${parsed.tags
-          .map((tag) => `  - "${escapeYamlString(tag)}"`)
-          .join("\n")}`
-      : " []";
+  const categories = formatYamlList(parsed.categories);
+  const tags = formatYamlList(parsed.tags);
 
-  return `---\ntitle: "${escapeYamlString(parsed.title)}"\ndate: "${date}"\nexcerpt: "${escapeYamlString(parsed.excerpt)}"\ntags:${tags}\nfeatured: ${parsed.featured}\n---\n\n${parsed.body}\n`;
+  return `---\ntitle: "${escapeYamlString(parsed.title)}"\ndate: "${date}"\nexcerpt: "${escapeYamlString(parsed.excerpt)}"\ncategories:${categories}\ntags:${tags}\nfeatured: ${parsed.featured}\n---\n\n${parsed.body}\n`;
 }
 
 export function parsePost(slug: string, fileContents: string): Post {
@@ -114,6 +133,7 @@ export function parsePost(slug: string, fileContents: string): Post {
     date: frontMatter.date,
     excerpt: frontMatter.excerpt || deriveExcerpt(content),
     tags: frontMatter.tags,
+    categories: frontMatter.categories,
     featured: frontMatter.featured,
     readingTime: estimateReadingTime(content),
     content,

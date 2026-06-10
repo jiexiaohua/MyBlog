@@ -34,6 +34,9 @@ excerpt: A short summary
 tags:
   - Next.js
   - Blog
+categories:
+  - 技术
+  - 生活
 featured: true
 ---
 
@@ -48,9 +51,28 @@ This is the first post about a personal blog.
       title: "Hello Next",
       excerpt: "A short summary",
       tags: ["Next.js", "Blog"],
+      categories: ["技术", "生活"],
       featured: true,
     });
     expect(post.readingTime).toMatch(/\d+ min read/);
+  });
+
+  it("defaults legacy posts without categories into the essay category", () => {
+    const post = parsePost(
+      "legacy",
+      `---
+title: Legacy
+date: 2026-06-08
+excerpt: Old post
+tags: []
+featured: false
+---
+
+Body
+`,
+    );
+
+    expect(post.categories).toEqual(["随笔"]);
   });
 
   it("generates stable url-safe slugs with a date fallback", () => {
@@ -67,6 +89,7 @@ This is the first post about a personal blog.
         excerpt: "One",
         body: "First body",
         tags: ["Next.js"],
+        categories: ["技术"],
         featured: true,
         date: "2026-06-08",
       },
@@ -78,6 +101,7 @@ This is the first post about a personal blog.
         excerpt: "Two",
         body: "Second body",
         tags: ["Life"],
+        categories: ["生活", "随笔"],
         featured: false,
         date: "2026-06-08",
       },
@@ -87,7 +111,7 @@ This is the first post about a personal blog.
     expect(first.slug).toBe("hello-next");
     expect(second.slug).toBe("hello-next-2");
     await expect(readFile(path.join(tempDir, "hello-next.md"), "utf8")).resolves
-      .toContain("First body");
+      .toContain('  - "技术"');
   });
 
   it("lists posts newest first", async () => {
@@ -126,6 +150,7 @@ This is the first post about a personal blog.
         excerpt: "Original excerpt",
         body: "Original body",
         tags: ["Draft"],
+        categories: ["草稿"],
         featured: false,
         date: "2026-06-08",
       },
@@ -139,6 +164,7 @@ This is the first post about a personal blog.
         excerpt: "Updated excerpt",
         body: "Updated body",
         tags: ["Published"],
+        categories: ["技术", "发布"],
         featured: true,
         date: "2026-06-09",
       },
@@ -150,6 +176,7 @@ This is the first post about a personal blog.
       title: "Updated Title",
       excerpt: "Updated excerpt",
       tags: ["Published"],
+      categories: ["技术", "发布"],
       featured: true,
       date: "2026-06-09",
     });

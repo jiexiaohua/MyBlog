@@ -14,8 +14,10 @@ type LandingPost = {
 
 export function LandingExperience({
   latestPosts,
+  siteHost,
 }: {
   latestPosts: LandingPost[];
+  siteHost: string;
 }) {
   const [pointer, setPointer] = useState({ x: 0, y: 0 });
   const compassStyle = useMemo(
@@ -109,7 +111,7 @@ export function LandingExperience({
             />
           </div>
           <div className="absolute bottom-10 left-2 rounded-lg border border-white/30 bg-[#172026]/38 px-4 py-3 text-sm font-bold text-white shadow-lg backdrop-blur">
-            xiaohua.host
+            {siteHost}
           </div>
         </div>
       </section>

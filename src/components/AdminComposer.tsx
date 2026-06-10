@@ -10,6 +10,7 @@ import {
 import {
   Eye,
   FilePlus2,
+  FolderOpen,
   ImagePlus,
   LogIn,
   LogOut,
@@ -25,7 +26,11 @@ import {
   normalizePostForm,
   type AdminPostForm,
 } from "@/lib/admin-editor";
-import { filterPosts } from "@/lib/post-filters";
+import {
+  filterPosts,
+  getAvailableCategories,
+  getAvailableTags,
+} from "@/lib/post-filters";
 import { MarkdownArticle } from "./MarkdownArticle";
 
 type AdminPost = {
@@ -33,6 +38,7 @@ type AdminPost = {
   title: string;
   date: string;
   excerpt: string;
+  categories: string[];
   tags: string[];
   featured: boolean;
   content: string;
@@ -47,6 +53,7 @@ type EditorView = "write" | "preview";
 const emptyForm: PostForm = {
   title: "",
   excerpt: "",
+  categories: "随笔",
   tags: "",
   featured: false,
   body: "# 新文章\n\n从这里开始写。",
@@ -56,6 +63,7 @@ function postToForm(post: AdminPost): PostForm {
   return {
     title: post.title,
     excerpt: post.excerpt,
+    categories: post.categories.join(", "),
     tags: post.tags.join(", "),
     featured: post.featured,
     body: post.content,
@@ -70,6 +78,10 @@ function formToPayload(form: PostForm) {
     excerpt: normalized.excerpt,
     body: normalized.body,
     featured: normalized.featured,
+    categories: normalized.categories
+      .split(",")
+      .map((category) => category.trim())
+      .filter(Boolean),
     tags: normalized.tags
       .split(",")
       .map((tag) => tag.trim())
@@ -95,6 +107,15 @@ export function AdminComposer() {
   const filteredPosts = useMemo(
     () => filterPosts(posts, { query: adminQuery }),
     [adminQuery, posts],
+  );
+  const adminStats = useMemo(
+    () => ({
+      posts: posts.length,
+      categories: getAvailableCategories(posts).length,
+      tags: getAvailableTags(posts).length,
+      featured: posts.filter((post) => post.featured).length,
+    }),
+    [posts],
   );
   const isDirty = useMemo(
     () => !formsAreEqual(form, baselineForm),
@@ -371,6 +392,27 @@ export function AdminComposer() {
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-5 lg:grid-cols-[320px_1fr]">
       <aside className="h-fit rounded-lg border border-[var(--line)] bg-white p-4 shadow-sm">
+        <div className="mb-4 grid grid-cols-2 gap-2">
+          {[
+            ["文章", adminStats.posts],
+            ["栏目", adminStats.categories],
+            ["标签", adminStats.tags],
+            ["精选", adminStats.featured],
+          ].map(([label, value]) => (
+            <div
+              key={label}
+              className="rounded-lg border border-[var(--line)] bg-[var(--paper)] px-3 py-2"
+            >
+              <div className="text-xl font-black text-[var(--foreground)]">
+                {value}
+              </div>
+              <div className="text-xs font-bold text-[var(--muted)]">
+                {label}
+              </div>
+            </div>
+          ))}
+        </div>
+
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <div className="text-sm font-black text-[var(--ocean-dark)]">
@@ -420,6 +462,17 @@ export function AdminComposer() {
               </span>
               <span className="mt-1 block text-xs font-bold text-[var(--muted)]">
                 {post.date} / {post.slug}
+              </span>
+              <span className="mt-2 flex flex-wrap gap-1">
+                {post.categories.map((category) => (
+                  <span
+                    key={category}
+                    className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-[11px] font-black text-[var(--ocean-dark)]"
+                  >
+                    <FolderOpen size={12} />
+                    {category}
+                  </span>
+                ))}
               </span>
             </button>
           ))}
@@ -473,6 +526,21 @@ export function AdminComposer() {
                 }
                 className="mt-2 h-11 w-full rounded-lg border border-[var(--line)] px-3 outline-none transition focus:border-[var(--ocean)] focus:ring-4 focus:ring-[rgba(11,114,133,0.15)]"
                 required
+              />
+            </label>
+
+            <label className="text-sm font-black text-[var(--foreground)]">
+              栏目
+              <input
+                value={form.categories}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    categories: event.target.value,
+                  }))
+                }
+                className="mt-2 h-11 w-full rounded-lg border border-[var(--line)] px-3 outline-none transition focus:border-[var(--ocean)] focus:ring-4 focus:ring-[rgba(11,114,133,0.15)]"
+                placeholder="技术, 生活"
               />
             </label>
 

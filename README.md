@@ -22,13 +22,36 @@ pnpm dev
 
 ## 内容目录
 
-默认文章目录是 `content/posts`。生产环境可以设置：
+默认文章目录是 `content/posts`，默认上传目录是 `public/uploads`。生产环境可以设置：
 
 ```bash
 BLOG_CONTENT_DIR=/var/www/myblog/content/posts
+BLOG_UPLOADS_DIR=/var/www/myblog/public/uploads
 ```
 
-这样后续重新部署应用代码时，不会覆盖服务器上后台发布的新文章。
+这样后续重新部署应用代码时，不会覆盖服务器上后台发布的新文章和图片。
+
+## 站点域名
+
+站点域名由 `BLOG_SITE_URL` 控制，值必须是完整 origin：
+
+```bash
+BLOG_SITE_URL=http://xiaohua.host
+```
+
+更换域名时，应用环境变量、DNS 和 Nginx `server_name` 都需要同步调整。
+
+## 文章栏目
+
+文章 frontmatter 支持多栏目：
+
+```yaml
+categories:
+  - "技术"
+  - "生活"
+```
+
+没有 `categories` 的旧文章会自动归入 `随笔`。后台发文时可以用逗号分隔多个栏目。
 
 ## 验证
 

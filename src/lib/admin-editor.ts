@@ -1,6 +1,7 @@
 export type AdminPostForm = {
   title: string;
   excerpt: string;
+  categories: string;
   tags: string;
   featured: boolean;
   body: string;
@@ -18,6 +19,7 @@ export function normalizePostForm(form: AdminPostForm): AdminPostForm {
   return {
     title: form.title.trim(),
     excerpt: form.excerpt.trim(),
+    categories: normalizeTags(form.categories),
     tags: normalizeTags(form.tags),
     featured: form.featured,
     body: form.body.trim(),
